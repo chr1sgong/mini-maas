@@ -1,0 +1,66 @@
+# 手工部署版 vLLM。后续这份 YAML 就是 Operator reconcile 的生成模板。
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mini-maas
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-qwen7b-awq
+  namespace: mini-maas
+  labels: { app: vllm-qwen7b-awq }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: vllm-qwen7b-awq }
+  template:
+    metadata:
+      labels: { app: vllm-qwen7b-awq }
+    spec:
+      containers:
+        - name: vllm
+          image: vllm/vllm-openai:latest # TODO: 锁定具体版本保证可复现
+          imagePullPolicy: IfNotPresent
+          args:
+            - --model=Qwen/Qwen2.5-7B-Instruct-AWQ
+            - --served-model-name=qwen2.5-7b
+            - --max-model-len=8192
+            - --max-num-seqs=64
+            - --gpu-memory-utilization=0.85 # D5 双实例共卡时改为 0.45
+            - --enable-prefix-caching
+          env:
+            # 国内 HF 镜像加速；网络可直连 huggingface.co 则删除本项
+            - name: HF_ENDPOINT
+              value: "https://hf-mirror.com"
+          ports:
+            - { name: http, containerPort: 8000 }
+          resources:
+            requests: { cpu: "4", memory: 16Gi }
+            limits:
+              memory: 32Gi
+              nvidia.com/gpu: "1"
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 10
+            failureThreshold: 90 # 首次需下载约 5.5GB 权重，耐心等待
+          volumeMounts:
+            - { name: hf-cache, mountPath: /root/.cache/huggingface }
+            - { name: shm, mountPath: /dev/shm }
+      volumes:
+        # 独立缓存目录，避免与 vllm-dev 开发容器的 ~/.cache/huggingface 产生 root 属主权属冲突
+        - name: hf-cache
+          hostPath: { path: /data/mini-maas/hf-cache, type: DirectoryOrCreate }
+        # 容器默认 shm 仅 64Mi，vLLM 需要更大共享内存
+        - name: shm
+          emptyDir: { medium: Memory, sizeLimit: 8Gi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-qwen7b-awq
+  namespace: mini-maas
+spec:
+  selector: { app: vllm-qwen7b-awq }
+  ports:
+    - { name: http, port: 8000, targetPort: http }

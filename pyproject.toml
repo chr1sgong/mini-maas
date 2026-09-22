@@ -1,0 +1,11 @@
+[project]
+name = "mini-maas"
+version = "0.1.0"
+description = "mini-maas 项目统一python环境，用于bench 压测、scripts 工具、experiments 分析等"
+requires-python = ">=3.11"
+dependencies = [
+    "openai>=1.40",     # smoke_stream.py做冒烟测试
+]
+
+[tool.uv]
+package = false
