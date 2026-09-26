@@ -15,8 +15,11 @@
 
 ## 软件 / 已有组件（基础软件）
 
-| 组件 | 状态 | 与 本项目 的关系 |
-|---|---|---|
-| Docker 29.4.0 | active | 与 k3s 共存；拉镜像可走 docker 再导入 k3s containerd |
-| nvidia-container-toolkit 1.19.0 | 已装 ✓ | 容器模拟推理池，需要往容器注入nvidia先看。 直接用，无需再装 |
-| kubectl | 已装 ✓ | — |
+| 组件 | 版本 | 状态 | 与 本项目 的关系 |
+|---|---|---|---|
+| Docker  | 29.4.0 | active  | 与 k3s 共存；拉镜像可走 docker 再导入 k3s containerd |
+| nvidia-container-toolkit  | 1.19.0 | 已装 | 容器模拟推理池，需要往容器注入nvidia先看。 直接用，无需再装 |
+| kubectl | Client Version v1.35.1 | 已装 | — |
+| k3s | v1.36.4+k3s1 | 已装 | —— |
+| go | 1.26.7 | 已装 | —— |
+| kubebuilder | v4.16.0 | —— |

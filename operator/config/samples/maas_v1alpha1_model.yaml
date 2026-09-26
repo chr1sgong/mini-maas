@@ -1,0 +1,19 @@
+apiVersion: maas.chr1sgong.io/v1alpha1
+kind: Model
+metadata:
+  labels:
+    app.kubernetes.io/name: operator
+    app.kubernetes.io/managed-by: kustomize
+  name: qwen2-5-7b-awq
+spec:
+  artifact_uri: hf://Qwen/Qwen2.5-7B-Instruct-AWQ
+  engine: vllm
+  # 必须固定版本，不能以 latest 结尾（CEL 校验）
+  image: vllm/vllm-openai:v0.9.1
+  model_config:
+    max_model_len: 8192
+    max_num_seqs: 64
+    # enable_prefix_caching: true  # 默认开启
+  serving:
+    # replicas: 1                  # 默认 1；显式写 0 即 scale-to-zero
+    # gpu_memory_utilization: 85   # 默认 85，即 vLLM 的 0.85

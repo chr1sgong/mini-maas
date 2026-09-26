@@ -1,0 +1,14 @@
+apiVersion: maas.chr1sgong.io/v1alpha1
+kind: Model
+metadata:
+  name: qwen2-5-7b
+  namespace: mini-maas
+spec:
+  artifactURI: hf://Qwen/Qwen2-5-7B-Instruct-AWQ
+  engine: vllm
+  engineConfig:
+    maxModelLen: -1
+    maxNumSeqs: 64
+    enablePrefixCaching: true
+  image: vllm/vllm-openai:v0.30.0
+  serving: {}
