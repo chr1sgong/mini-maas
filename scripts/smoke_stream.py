@@ -15,6 +15,23 @@ client = OpenAI(base_url=BASE_URL, api_key="EMPTY")
 
 model = client.models.list().data[0].id
 print(f"model:{model}")
+# 预热
+resp = client.chat.completions.create(
+    model=model,
+    messages=[
+        {"role": "user", "content": "用三句话介绍 Kubernates, 每句不超过 20 字。"}
+    ],
+    max_tokens=128,
+    temperature=0.7,
+    stream=True
+)
+
+chunks = 0
+for c in resp:
+    delta = c.choices[0].delta.content
+    if delta:
+        chunks += 1
+        print(delta, end="", flush=True)
 
 t0 = time.perf_counter()
 resp = client.chat.completions.create(
