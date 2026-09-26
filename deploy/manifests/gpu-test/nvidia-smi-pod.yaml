@@ -1,0 +1,16 @@
+# D1 验收①：GPU 在 k3s 容器内可见
+# 拉取失败时可将 image 换成任一本地已有 CUDA 镜像（如 vllm-dev:v0.18.1，command 不变）
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nvidia-smi
+  labels: { app: gpu-test }
+spec:
+  restartPolicy: Never
+  containers:
+    - name: cuda
+      image: nvcr.io/nvidia/cuda:12.4.1-base-ubuntu22.04
+      command: ["nvidia-smi"]
+      resources:
+        limits:
+          nvidia.com/gpu: "1"
