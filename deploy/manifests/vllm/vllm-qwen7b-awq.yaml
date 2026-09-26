@@ -11,6 +11,8 @@ metadata:
   namespace: mini-maas
   labels: { app: vllm-qwen7b-awq }
 spec:
+  strategy:
+    type: Recreate
   replicas: 1
   selector:
     matchLabels: { app: vllm-qwen7b-awq }
@@ -20,7 +22,7 @@ spec:
     spec:
       containers:
         - name: vllm
-          image: vllm/vllm-openai:latest # TODO: 锁定具体版本保证可复现
+          image: vllm/vllm-openai:v0.30.0 
           imagePullPolicy: IfNotPresent
           args:
             - --model=Qwen/Qwen2.5-7B-Instruct-AWQ
