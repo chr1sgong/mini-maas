@@ -131,8 +131,8 @@ func (in *ModelStatus) DeepCopyInto(out *ModelStatus) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.EndPoints != nil {
-		in, out := &in.EndPoints, &out.EndPoints
+	if in.Endpoints != nil {
+		in, out := &in.Endpoints, &out.Endpoints
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
