@@ -94,7 +94,7 @@ type ModelStatus struct {
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
 	// +optional
-	// +kubebuilder:validation:Enum=Pending;Ready;Failed
+	// +kubebuilder:validation:Enum=Pending;Creating;Ready;Failed
 	Phase string `json:"phase,omitempty"`
 	// +optional
 	Endpoints []string `json:"endpoints,omitempty"`

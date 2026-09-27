@@ -4,10 +4,10 @@ metadata:
   name: qwen2-5-7b
   namespace: mini-maas
 spec:
-  artifactURI: hf://Qwen/Qwen2-5-7B-Instruct-AWQ
+  artifactURI: hf://Qwen/Qwen2.5-7B-Instruct-AWQ
   engine: vllm
   engineConfig:
-    maxModelLen: -1
+    maxModelLen: 8192 
     maxNumSeqs: 64
     enablePrefixCaching: true
   image: vllm/vllm-openai:v0.30.0
