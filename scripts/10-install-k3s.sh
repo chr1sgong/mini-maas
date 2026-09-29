@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# 安装 k3s 单节点（WSL2 / Ubuntu 24.04，systemd 确认已开启）
+# 安装 k3s 单节点
 # 用法：bash scripts/10-install-k3s.sh
-#       K3S_CN_MIRROR=1 bash scripts/d1/10-install-k3s.sh   # 官方源慢时用国内镜像
+# K3S_CN_MIRROR=1 bash scripts/d1/10-install-k3s.sh   # 官方源慢时用国内镜像
 set -euo pipefail
 
 if systemctl is-active --quiet k3s; then

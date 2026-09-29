@@ -1,5 +1,5 @@
 SHELL := /bin/bash
-IMG ?= vllm/vllm-openai:latest
+IMG ?= vllm/vllm-openai:v0.30.0
 
 .PHONY: 10-k3s 11-gpu-runtime 13-image 14-verify-gpu 13-vllm 15-smoke
 
@@ -27,4 +27,4 @@ IMG ?= vllm/vllm-openai:latest
 
 15-smoke:
 	@echo "=== Stage 6: smoke test ==="
-	python3 ./scripts/smoke_stream.sh
+	python3 ./scripts/smoke_stream.py

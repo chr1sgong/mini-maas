@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# D1 Step 4 / 验收①：起一个申请 GPU 的 test pod，容器内跑 nvidia-smi
+# 起一个申请 GPU 的 test pod，容器内跑 nvidia-smi
 set -euo pipefail
 
 MANIFEST="$(cd "$(dirname "$0")/.." && pwd)/deploy/manifests/gpu-test/nvidia-smi-pod.yaml"
 
 kubectl delete pod nvidia-smi --ignore-not-found
+echo "=== 创建 test pod ==="
 kubectl apply -f "$MANIFEST"
 
 phase=""
@@ -25,4 +26,8 @@ fi
 
 echo "=== test pod 内的 nvidia-smi 输出 ==="
 kubectl logs nvidia-smi
-echo "OK: D1 验收①通过（GPU 在 k3s 容器内可见）"
+echo "OK: 验收通过（GPU 在 k3s 容器内可见）"
+
+## 删掉 test pod
+echo "=== 删掉test pod ==="
+kubectl delete pod nvidia-smi --ignore-not-found

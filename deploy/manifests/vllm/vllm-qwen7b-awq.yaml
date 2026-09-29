@@ -29,7 +29,7 @@ spec:
             - --served-model-name=qwen2.5-7b
             - --max-model-len=8192
             - --max-num-seqs=64
-            - --gpu-memory-utilization=0.85 # D5 双实例共卡时改为 0.45
+            - --gpu-memory-utilization=0.85 # 双实例共卡时改为 0.45
             - --enable-prefix-caching
           env:
             # 国内 HF 镜像加速；网络可直连 huggingface.co 则删除本项
