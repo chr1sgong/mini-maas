@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# D1 Step 3：让 k3s 的 containerd 支持 NVIDIA GPU
+# 让 k3s 的 containerd 支持 NVIDIA GPU
 # 前置：nvidia-container-toolkit 已安装（本机 nvidia-ctk 1.19.0 ✓），k3s 已运行
 set -euo pipefail
 
