@@ -30,7 +30,7 @@ DP_MANIFEST="$(cd "$(dirname "$0")/.." && pwd)/deploy/manifests/gpu-test/device-
 kubectl apply -f "$DP_MANIFEST"
 kubectl -n kube-system rollout status daemonset/nvidia-device-plugin-daemonset --timeout=180s
 
-echo "=== allocatable（应看到 nvidia.com/gpu: 1）==="
+echo "=== allocatable（应该看到 nvidia.com/gpu: 1）==="
 kubectl get node -o jsonpath='{.items[0].status.allocatable}{"\n"}'
 kubectl get node -o jsonpath='{.items[0].status.allocatable}' | grep -q 'nvidia.com/gpu' \
   && echo "OK: GPU 已可分配" \

@@ -5,6 +5,7 @@ set -euo pipefail
 MANIFEST="$(cd "$(dirname "$0")/.." && pwd)/deploy/manifests/gpu-test/nvidia-smi-pod.yaml"
 
 kubectl delete pod nvidia-smi --ignore-not-found
+echo "=== 创建 test pod ==="
 kubectl apply -f "$MANIFEST"
 
 phase=""
@@ -26,3 +27,7 @@ fi
 echo "=== test pod 内的 nvidia-smi 输出 ==="
 kubectl logs nvidia-smi
 echo "OK: 验收通过（GPU 在 k3s 容器内可见）"
+
+## 删掉 test pod
+echo "=== 删掉test pod ==="
+kubectl delete pod nvidia-smi --ignore-not-found
