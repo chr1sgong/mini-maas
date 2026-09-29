@@ -28,3 +28,7 @@ IMG ?= vllm/vllm-openai:v0.30.0
 15-smoke:
 	@echo "=== Stage 6: smoke test ==="
 	python3 ./scripts/smoke_stream.py
+
+20-baseline:
+	@echo "=== baseline testing ==="
+	bash ./scripts/20-baseline.sh

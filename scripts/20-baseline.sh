@@ -25,10 +25,10 @@ cd "$(dirname "$0")/.."
 TASKSET=""
 command -v taskset > /dev/null && TASKSET="taskset -c 0-7"
 
-# for c in 56 56 56; do
-#     echo "===== steady mode: c=$c ====="
-#     $TASKSET $PY bench/bench.py --mode steady --concurrency $c --duration 60 --out "bench/results/steady-c$c.jsonl" --md docs/baseline/baseline.md
-# done
+for c in 1 4 8 16 24 32 40 48 56 64; do
+    echo "===== steady mode: c=$c ====="
+    $TASKSET $PY bench/bench.py --mode steady --concurrency $c --duration 60 --out "bench/results/steady-c$c.jsonl" --md docs/baseline/baseline.md
+done
 
 for bs in 1 8 16 24 32 40 48 56 64 72 80 88 96 104 112 120 128; do
     echo "====== burst $bs ======"
