@@ -40,7 +40,8 @@ import (
 )
 
 const (
-	resourceGPU corev1.ResourceName = "nvidia.com/gpu"
+	resourceGPU       corev1.ResourceName = "nvidia.com/gpu"
+	vllmCacheHostPath string              = "/data/mini-maas/vllm-cache"
 )
 
 // ModelReconciler reconciles a Model object
@@ -275,6 +276,10 @@ func buildDeployment(model *maasv1alpha1.Model) *appsv1.Deployment {
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
+									Name:      "vllm-cache",
+									MountPath: "/root/.cache/vllm",
+								},
+								{
 									Name:      "hf-cache",
 									MountPath: "/root/.cache/huggingface",
 								},
@@ -286,6 +291,15 @@ func buildDeployment(model *maasv1alpha1.Model) *appsv1.Deployment {
 						},
 					},
 					Volumes: []corev1.Volume{
+						{
+							Name: "vllm-cache",
+							VolumeSource: corev1.VolumeSource{
+								HostPath: &corev1.HostPathVolumeSource{
+									Path: vllmCacheHostPath,
+									Type: ptr.To(corev1.HostPathDirectoryOrCreate),
+								},
+							},
+						},
 						{
 							Name: "hf-cache",
 							VolumeSource: corev1.VolumeSource{
