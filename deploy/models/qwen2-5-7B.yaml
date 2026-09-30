@@ -11,4 +11,6 @@ spec:
     maxNumSeqs: 64
     enablePrefixCaching: true
   image: vllm/vllm-openai:v0.30.0
-  serving: {}
+  serving: 
+    replicas: 1
+    gpuMemoryUtilization: "0.45"
