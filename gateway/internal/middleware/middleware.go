@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-type Middleware func(http.Handler) http.Handler
+type Middleware func(h http.Handler) http.Handler
 
 // Chain applies a list of middlewares before the input http.Handler. The middlewares are applied in the order they are provided.
 func Chain(h http.Handler, ms ...Middleware) http.Handler {

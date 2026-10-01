@@ -1,12 +1,12 @@
 package proxy
 
 import (
-	"bytes"
 	"encoding/json"
-	"io"
+	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/mini-maas/gateway/internal/openai"
 	"github.com/mini-maas/gateway/internal/routetable"
 )
 
@@ -17,72 +17,37 @@ type Handler struct {
 	Proxy  http.Handler // *httputil.Reverseproxy, 对Handler 而言只是个Handler
 }
 
-// requestPeek 只取路由与后续限流需要的字段，body直接转发给上游
-type requestPeek struct {
-	Model  string `json:"model"`
-	Stream bool   `json:"stream"` // 是否流式输出， TPM计数，监控指标都需要
-}
-
-// ChatCompletions 处理 POST /v1/chat/completions 请求
+// POST /v1/chat/completions
 func (h *Handler) ChatCompletions(w http.ResponseWriter, r *http.Request) {
-	// TODO: 实现ChatCompletions处理逻辑
-	peek, err := peekModel(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	params, ok := openai.ParamsFrom(r.Context())
+	if !ok {
+		openai.WriteError(w, http.StatusBadRequest, "invalid_request_error", "invalid_request_error", "missing inference params")
 		return
 	}
-	endpoints := h.Table.Endpoints(peek.Model)
-	ep := h.Picker.Pick(peek.Model, endpoints, r)
+	endpoints := h.Table.Endpoints(params.Model)
+	if len(endpoints) == 0 {
+		openai.WriteError(w, http.StatusNotFound, "model not found", "invalid_request_error", fmt.Sprintf("The model `%s` does not exist or you do not have access to it", params.Model))
+		return
+	}
+	ep := h.Picker.Pick(params.Model, endpoints, r)
 	h.Proxy.ServeHTTP(w, withTarget(r, ep))
 }
 
-// 处理 GET /v1/models
+// GET /v1/models
 func (h *Handler) Models(w http.ResponseWriter, r *http.Request) {
 	models := h.Table.Models()
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(modelList{
+	list := openai.ModelList{
 		Object: "list",
-		Data: func() []modelObject {
-			objs := make([]modelObject, 0, len(models))
-			for _, m := range models {
-				objs = append(objs, modelObject{
-					ID:      m,
-					Object:  "model",
-					Created: time.Now().Unix(),
-					OwnedBy: "vllm",
-				})
-			}
-			return objs
-		}(),
-	})
-}
-
-type modelObject struct {
-	ID      string `json:"id"`
-	Object  string `json:"object"`
-	Created int64  `json:"created"`
-	OwnedBy string `json:"owned_by"`
-}
-
-type modelList struct {
-	Object string        `json:"object"`
-	Data   []modelObject `json:"data"`
-}
-
-func peekModel(r *http.Request) (*requestPeek, error) {
-	// TODO: 实现peekModel逻辑，从请求中解析出model和stream字段
-	// 从请求中解析出model和stream字段
-	// Warning: Reading the body here will consume it, so we need to restore it afterwards.
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		return nil, err
+		Data:   make([]openai.ModelObject, 0, len(models)),
 	}
-	r.Body = io.NopCloser(bytes.NewReader(body))
-
-	var peek requestPeek
-	if err := json.Unmarshal(body, &peek); err != nil {
-		return nil, err
+	for _, m := range models {
+		list.Data = append(list.Data, openai.ModelObject{
+			ID:      m,
+			Object:  "model",
+			Created: time.Now().Unix(),
+			OwnedBy: "vllm",
+		})
 	}
-
-	return &peek, nil
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(list)
 }

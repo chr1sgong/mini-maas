@@ -10,12 +10,13 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/mini-maas/gateway/internal/openai"
 )
 
-// 理由结果（路由算法选中的endpoint) 通过request context传给Rewrite
+// 路由结果（路由算法选中的endpoint) 通过request context传给Rewrite
 // Handler负责“路由决策”， ReverseProxy负责“字节搬运”
-type ctxKeyTarget struct {
-}
+type ctxKeyTarget struct{}
 
 func withTarget(r *http.Request, target string) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), ctxKeyTarget{}, target))
@@ -28,7 +29,7 @@ func targetFrom(r *http.Request) string {
 
 // NewReverseProxy 构造转发器
 // TODO: 流式的生死线都在这几个回调里
-func NewReverseProxy(transport *http.Transport) *httputil.ReverseProxy {
+func NewReverseProxy(transport http.RoundTripper) *httputil.ReverseProxy {
 	return &httputil.ReverseProxy{
 		Transport: transport,
 
@@ -56,11 +57,11 @@ func NewReverseProxy(transport *http.Transport) *httputil.ReverseProxy {
 				return
 			}
 			log.Printf("proxy error: %v", err)
-			writeError(w, http.StatusBadGateway, "upstream_error", "server_error", "The upstream model service is unavailable.")
+			openai.WriteError(w, http.StatusBadGateway, "upstream_error", "server_error", "The upstream model service is unavailable.")
 		},
 
-		// FlushInterval: 先读Go源码 flushInterval()
-		// 确认SSE响应在零值下的实际行动，再决定设不j设
+		// TODO: FlushInterval: 先读Go源码 flushInterval()
+		// 零值会立即flush,不需要显示设置
 	}
 }
 
@@ -76,6 +77,6 @@ func NewTransport() *http.Transport {
 		IdleConnTimeout:     90 * time.Second,
 
 		// TODO: ResponseHeaderTimeout要不要设置
-		// vLLM排队时TTFT可达十多秒，设置笑了会误杀排队中的请求
+		// vLLM排队时TTFT可达十多秒，设置了会误杀排队中的请求
 	}
 }
