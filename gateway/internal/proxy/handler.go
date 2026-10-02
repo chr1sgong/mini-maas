@@ -3,6 +3,7 @@ package proxy
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -29,8 +30,15 @@ func (h *Handler) ChatCompletions(w http.ResponseWriter, r *http.Request) {
 		openai.WriteError(w, http.StatusNotFound, "model not found", "invalid_request_error", fmt.Sprintf("The model `%s` does not exist or you do not have access to it", params.Model))
 		return
 	}
-	ep := h.Picker.Pick(params.Model, endpoints, r)
-	h.Proxy.ServeHTTP(w, withTarget(r, ep))
+	decision := h.Picker.Pick(params, endpoints)
+	// 确保在请求处理完成后释放决策
+	defer decision.ReleaseFn()
+
+	w.Header().Set("X-Maas-Endpoint", decision.Endpoint)
+	w.Header().Set("X-Maas-Route-Reason", decision.Reason)
+	log.Printf("route model=%s endpoint=%s reason=%s key=%016x", params.Model, decision.Endpoint, decision.Reason, params.AffinityKey)
+
+	h.Proxy.ServeHTTP(w, withTarget(r, decision.Endpoint))
 }
 
 // GET /v1/models

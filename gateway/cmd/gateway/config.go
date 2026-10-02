@@ -14,6 +14,11 @@ type config struct {
 	Defaults struct {
 		MaxCompletionTokens int `json:"max_completion_tokens"` // 默认的最大完成token数
 	} `json:"defaults"`
+	Routing struct {
+		Strategy            string `json:"strategy"`              // 路由策略, TODO: 枚举会好一些
+		AffinityBytes       int    `json:"affinity_bytes"`        // 用于计算亲和性键的最大字节数
+		MaxAffinityInflight int64  `json:"max_affinity_inflight"` // 最大亲和性并发数, 超过则降级least-inflight
+	}
 	Keys []keyConfig `json:"keys"`
 }
 

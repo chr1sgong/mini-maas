@@ -36,12 +36,13 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// 先使用静态路由表
+	// 路由表: 通过informer watch model CR实现
 	table := routetable.NewTable()
-	source := routetable.NewStaticSource(map[string][]string{
-		"qwen2-5-3b": {"10.42.0.23:8000"},
-		"qwen2-5-7b": {"10.42.0.26:8000"},
-	})
+	dynamicClient, err := routetable.NewDynamicClient(*kubeconfig)
+	if err != nil {
+		log.Fatalf("failed to create dynamic client: %v", err)
+	}
+	source := routetable.NewInformerSource(dynamicClient, *namespace)
 
 	go func() {
 		if err := source.Run(ctx, table); err != nil {
@@ -49,18 +50,33 @@ func main() {
 		}
 	}()
 
+	syncCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	select {
+	case <-source.Synced():
+	case <-syncCtx.Done():
+		cancel()
+		log.Fatalf("routetable initial sync timeout: %v", syncCtx.Err())
+	}
+	cancel() // cancel the sync context if synced successfully
+
 	identities := cfg.identities()
 	store := auth.NewStaticKeyStore(identities)
 	registry := ratelimit.NewRegistry(identities)
 
-	//
 	var transport http.RoundTripper = proxy.NewTransport()
 	if cfg.Metering {
 		transport = metering.WrapTransport(transport)
 	}
+
+	tracker := proxy.NewInflightTracker()
+	picker, err := proxy.NewPicker(cfg.Routing.Strategy, tracker, cfg.Routing.MaxAffinityInflight)
+	if err != nil {
+		log.Fatalf("failed to create picker: %v", err)
+	}
+
 	handler := &proxy.Handler{
 		Table:  table,
-		Picker: proxy.NewRoundRobinPicker(),
+		Picker: picker,
 		Proxy:  proxy.NewReverseProxy(transport),
 	}
 
@@ -76,7 +92,7 @@ func main() {
 		Handler: middleware.Chain(mux,
 			ratelimit.NewMiddleware(registry, cfg.Defaults.MaxCompletionTokens),
 			auth.NewMiddleware(store),
-			openai.ParamsMiddleware(cfg.Metering),
+			openai.ParamsMiddleware(cfg.Metering, cfg.Routing.AffinityBytes),
 			middleware.Logging,
 		),
 		ReadHeaderTimeout: 10 * time.Second,

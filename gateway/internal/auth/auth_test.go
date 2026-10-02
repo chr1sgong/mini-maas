@@ -75,7 +75,7 @@ func TestHealthzExempt(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	rec := httptest.NewRecorder()
-	mw.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/healthz", nil))
+	mw.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/healthz", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("healthz status = %d, want 200", rec.Code)
 	}
