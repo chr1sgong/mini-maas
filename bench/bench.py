@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import subprocess
+import sys
 import json
 import random
 from dataclasses import asdict, dataclass
@@ -124,6 +126,47 @@ async def run_burst(client: AsyncOpenAI, args, prefix: str, results: list) -> No
     batch = await asyncio.gather(*(one_request(client, args.model, gen_prompt(rng, args.input_tokens, prefix), args.output_tokens) for _ in range(args.burst_size)))
     results.extend(batch)
 
+def _run_quiet(cmd: list[str], timeout: float = 5.0) -> str | None:
+    try:
+        out = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        return out.stdout.strip() or None
+    except Exception:
+        return None
+
+def write_run_json(path: Path, args, run_id: str, start_unix: float, end_unix: float, wall: float, summary: dict) -> None:
+    git_rev = _run_quiet(["git", "rev-parse", "--short", "HEAD"])
+    model_cr = None
+    raw = _run_quiet(["kubectl", "-n", "mini-maas", "get", "model", args.model, "-o", "json"])
+    if raw:
+        try:
+            model_cr = json.loads(raw).get("spec")
+        except json.JSONDecodeError:
+            model_cr = None
+
+    # 网关config.json: rounting.strategy实时读取
+    config_snapshot = None
+    if args.config_snapshot:
+        try:
+            config_snapshot = args.config_snapshot.read_text(encoding="utf-8")
+        except OSError:
+            pass
+
+    meta = {
+        "run_id": run_id,
+        "argv": sys.argv[1:],
+        "git_rev": git_rev,
+        "start_unix": start_unix,
+        "end_unix": end_unix,
+        "wall_s": wall,
+        "model_cr_spec": model_cr,
+        "config_snapshot": config_snapshot,
+        "summary": summary
+    }
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(f"run 清单已写入: {path}")
+
 def pct(values: list[float], q: float) -> float:
     if not values:
         return float("nan")
@@ -195,6 +238,9 @@ async def run_benchmark() -> None:
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--out", type=Path, default=None, help="逐个请求的JSONL输出路径")
     p.add_argument("--md", type=Path, default=None, help="汇总行追加到的markdown文件")
+    p.add_argument("--run-id", default=None, help="本次运行标识")
+    p.add_argument("--run-json", type=Path, default=None, help="run运行清单输出路径")
+    p.add_argument("--config-snapshot", type=Path, default=None, help="配置快照路径")
     args = p.parse_args()
 
     prefix = ""
@@ -203,6 +249,13 @@ async def run_benchmark() -> None:
 
     client = AsyncOpenAI(base_url=args.base_url, api_key=args.api_key, timeout=300)
     results: list[ReqResult] = []
+
+    start_unix = time.time()
+    run_id = args.run_id or (
+        time.strftime("%Y%m%d-%H%M%S", time.gmtime(start_unix))
+        + f"-{args.mode}"
+        + (f"-c{args.concurrency}" if args.mode == "steady" else f"-b{args.burst_size}")
+    )
 
     # 预热
     await one_request(client, args.model, gen_prompt(random.Random(0), 32, prefix), 16)
@@ -218,9 +271,17 @@ async def run_benchmark() -> None:
         return
 
     wall = time.perf_counter() - t0
+    end_unix = time.time()
 
     s = summarize(results, wall)
     print_summarize(s)
+    print(f"run_id={run_id} start_unix={start_unix:.3f} end_unix={end_unix:.3f}")
+
+    run_json = args.run_json or (args.out.parent / "run.json" if args.out else None)
+    if run_json:
+        write_run_json(run_json, args, run_id, start_unix, end_unix, wall, s)
+    else:
+        print("未指定 --out/--run-json, 未保存结果. 请手动分析结果")
 
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)

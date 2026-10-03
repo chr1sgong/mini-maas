@@ -20,3 +20,4 @@ docs/baseline/**.png
 *.swp
 
 dev-journal/
+docs/experiments/**/bench.jsonl

@@ -5,6 +5,12 @@ description = "mini-maas 项目统一python环境，用于bench 压测、scripts
 requires-python = ">=3.11"
 dependencies = [
     "openai>=1.40",     # smoke_stream.py做冒烟测试
+    "aiohttp>=3.9",      # 预留：更底层的流式客户端实验
+    "numpy",             # 数据分析
+    "pandas",            # 数据分析
+    "tabulate",          # 结果表格化
+    "pyyaml>=6",         # ueries.yaml manifest 解析
+    "matplotlib>=3.9",   # 实验曲线渲染
 ]
 
 [tool.uv]

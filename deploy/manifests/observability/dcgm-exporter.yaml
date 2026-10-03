@@ -1,4 +1,3 @@
-# D9 参考实现：dcgm-exporter（设计文档 Q8）
 # 消费卡（4090）能拿到 GPU_UTIL/FB_USED/功耗/温度，拿不到 PROF_* 细粒度，无所谓。
 apiVersion: apps/v1
 kind: DaemonSet
@@ -19,7 +18,7 @@ spec:
     spec:
       containers:
         - name: dcgm-exporter
-          image: nvcr.io/nvidia/k8s/dcgm-exporter:3.3.5-1.21.0-ubuntu22.04 # tag 以 nvcr.io 实际列表为准
+          image: nvcr.io/nvidia/k8s/dcgm-exporter:3.3.8-3.6.0-ubuntu22.04 # tag 以 nvcr.io 实际列表为准
           env:
             # dcgm 只读驱动计数器，不占 device-plugin 配额——
             # 绝不 request nvidia.com/gpu：time-slicing 超发的 2 份都已给 vLLM 双副本，
