@@ -2,6 +2,11 @@
   "listen": ":8080",
   "metering": true,
   "defaults": { "max_tokens": 1024 },
+  "routing": {
+    "strategy": "round_robin",
+    "affinity_bytes": 1024,
+    "max_affinity_inflight": 1
+  },
   "keys": [
     {
       "key": "sk-tenant-a-EXAMPLE",

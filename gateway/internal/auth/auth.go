@@ -12,7 +12,7 @@ import (
 func NewMiddleware(store KeyStore) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path == "/v1/healthz" { // 探活接口直接放行
+			if !strings.HasPrefix(r.URL.Path, "/v1/") { // 非v1接口直接放行 TODO: 这里有一些极端, 老接口不兼容了. 实际使用需要考虑这里
 				next.ServeHTTP(w, r)
 				return
 			}

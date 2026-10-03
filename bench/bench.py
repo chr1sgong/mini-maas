@@ -19,7 +19,12 @@ from dataclasses import asdict, dataclass
 import time
 from pathlib import Path
 
-from openai import AsyncOpenAI
+from openai import APIStatusError, AsyncOpenAI
+
+
+class FatalBenchError(Exception):
+    """收到非200响应时抛出,中断整个bench"""
+
 
 WORDS = (
     "alpha beta gamma delta epsilon zeta eta theta kubernetes inference "
@@ -72,6 +77,15 @@ async def one_request(client: AsyncOpenAI, model: str, prompt: str, max_tokens: 
                     t_first = now
                 t_last = now
                 chunks += 1
+    except APIStatusError as e:
+        # 非200: 打印详细错误并中断bench
+        print(
+            f"\n[FATAL] 非200响应 status={e.status_code} "
+            f"method={e.request.method} url={e.request.url}\n"
+            f"body={e.body}",
+            flush=True,
+        )
+        raise FatalBenchError(f"status={e.status_code}") from e
     except Exception as e:
         error = f"{type(e).__name__}: {e}"
 
@@ -168,8 +182,9 @@ def append_md(path: Path, args, s: dict) -> None:
 
 async def run_benchmark() -> None:
     p = argparse.ArgumentParser(description="mini-maas benchmark (详细口径参考docs/baseline/baseline.md)")
-    p.add_argument("--base-url", default="http://localhost:8000/v1")
-    p.add_argument("--model", default="qwen2.5-7b")
+    p.add_argument("--base-url", default="http://localhost:8080/v1")
+    p.add_argument("--api-key", default="EMPTY")
+    p.add_argument("--model", default="qwen2.5-7b-awq")
     p.add_argument("--mode", choices=["steady", "burst"], default="steady")
     p.add_argument("--concurrency", type=int, default=8, help="steady模式并发数")
     p.add_argument("--duration", type=int, default=60, help="steady模式持续时间（秒）")
@@ -186,17 +201,21 @@ async def run_benchmark() -> None:
     if args.prefix_len > 0:
         prefix = " ".join(WORDS[i % len(WORDS)] for i in range(args.prefix_len)) + " "
 
-    client = AsyncOpenAI(base_url=args.base_url, api_key="EMPTY", timeout=300)
+    client = AsyncOpenAI(base_url=args.base_url, api_key=args.api_key, timeout=300)
     results: list[ReqResult] = []
 
     # 预热
     await one_request(client, args.model, gen_prompt(random.Random(0), 32, prefix), 16)
 
     t0 = time.perf_counter()
-    if args.mode == "steady":
-        await run_steady(client, args, prefix, results)
-    else:
-        await run_burst(client, args, prefix, results)
+    try:
+        if args.mode == "steady":
+            await run_steady(client, args, prefix, results)
+        else:
+            await run_burst(client, args, prefix, results)
+    except FatalBenchError:
+        print("bench 因非200响应中断,请根据上方 [FATAL] 日志排查", flush=True)
+        return
 
     wall = time.perf_counter() - t0
 

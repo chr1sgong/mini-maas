@@ -1,0 +1,41 @@
+# D9 参考实现：dcgm-exporter（设计文档 Q8）
+# 消费卡（4090）能拿到 GPU_UTIL/FB_USED/功耗/温度，拿不到 PROF_* 细粒度，无所谓。
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: dcgm-exporter
+  namespace: observability
+spec:
+  selector:
+    matchLabels:
+      app: dcgm-exporter
+  template:
+    metadata:
+      labels:
+        app: dcgm-exporter
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9400"
+    spec:
+      containers:
+        - name: dcgm-exporter
+          image: nvcr.io/nvidia/k8s/dcgm-exporter:3.3.5-1.21.0-ubuntu22.04 # tag 以 nvcr.io 实际列表为准
+          env:
+            # dcgm 只读驱动计数器，不占 device-plugin 配额——
+            # 绝不 request nvidia.com/gpu：time-slicing 超发的 2 份都已给 vLLM 双副本，
+            # 再 request 会把推理副本挤到 Pending（Q8）。
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: "all"
+            - name: NVIDIA_DRIVER_CAPABILITIES
+              value: "utility"
+          ports:
+            - name: metrics
+              containerPort: 9400
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+      # 起不来的自查顺序：pod 日志 → kubectl exec 进去跑 nvidia-smi →
+      # 换 utkuozdemir/nvidia_gpu_exporter（Q8 备选）→ 放弃 GPU 行（不挡验收）

@@ -18,3 +18,5 @@ docs/baseline/**.png
 .idea
 .vscode/
 *.swp
+
+dev-journal/

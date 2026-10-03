@@ -19,7 +19,6 @@ package controller
 import (
 	"context"
 	"slices"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -42,6 +41,7 @@ import (
 const (
 	resourceGPU       corev1.ResourceName = "nvidia.com/gpu"
 	vllmCacheHostPath string              = "/data/mini-maas/vllm-cache"
+	appLabelKey       string              = "app"
 )
 
 // ModelReconciler reconciles a Model object
@@ -101,14 +101,15 @@ func (r *ModelReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	// 3. CreateOrUpdate Service (同理： select = app label, targetPort 用命名端口http)
 	svc := corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      parseDeploymentName(model),
+			// Service 名字必须是 RFC 1123 label（不允许点号），而 Deployment 允许 subdomain
+			Name:      parseServiceName(model),
 			Namespace: model.Namespace,
 		},
 	}
 	op, err = controllerutil.CreateOrUpdate(ctx, r.Client, &svc, func() error {
 		svc.Labels = childLabels(model)
 		svc.Spec.Selector = map[string]string{
-			"app": model.ObjectMeta.Name, // 与Deployment的Selector一致
+			appLabelKey: model.Name, // 与Deployment的Selector一致
 		}
 		svc.Spec.Ports = []corev1.ServicePort{
 			{
@@ -128,7 +129,7 @@ func (r *ModelReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 	// 5. list Pods (app label, Running + Ready) -> 填写endpoints
 	podList := &corev1.PodList{}
-	if err := r.List(ctx, podList, client.InNamespace(model.Namespace), client.MatchingLabels(map[string]string{"app": model.ObjectMeta.Name})); err != nil {
+	if err := r.List(ctx, podList, client.InNamespace(model.Namespace), client.MatchingLabels(map[string]string{appLabelKey: model.Name})); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -144,7 +145,7 @@ func (r *ModelReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			}
 		}
 	}
-	sort.Strings(endpoints)
+	slices.Sort(endpoints)
 
 	// 6. phase/endpoints 变了才执行Status().Update
 	if model.Status.Phase == phase && slices.Equal(model.Status.Endpoints, endpoints) {
@@ -189,7 +190,7 @@ func buildArgs(model *maasv1alpha1.Model) []string {
 	args := []string{}
 	modelName := parseModelName(model)
 	args = append(args, "--model="+modelName)
-	args = append(args, "--served-model-name="+model.ObjectMeta.Name)
+	args = append(args, "--served-model-name="+model.Name)
 	args = append(args, "--max-model-len="+strconv.Itoa(model.Spec.EngineConfig.MaxModelLen))
 	args = append(args, "--max-num-seqs="+strconv.Itoa(model.Spec.EngineConfig.MaxNumSeqs))
 	args = append(args, "--gpu-memory-utilization="+*model.Spec.Serving.GPUMemoryUtilization)
@@ -208,7 +209,14 @@ func parseModelName(model *maasv1alpha1.Model) string {
 }
 
 func parseDeploymentName(model *maasv1alpha1.Model) string {
-	return model.Spec.Engine + "-" + model.ObjectMeta.Name
+	return model.Spec.Engine + "-" + model.Name
+}
+
+// parseServiceName 与 Deployment 同名，但把点号替换为横线：
+// Service 名必须是 RFC 1123 label（[a-z0-9]([-a-z0-9]*[a-z0-9])?），不允许点号，
+// 而 Model 名允许点号（DNS 1123 subdomain），如 qwen2.5-3b。
+func parseServiceName(model *maasv1alpha1.Model) string {
+	return strings.ReplaceAll(parseDeploymentName(model), ".", "-")
 }
 
 func buildDeployment(model *maasv1alpha1.Model) *appsv1.Deployment {
@@ -227,12 +235,17 @@ func buildDeployment(model *maasv1alpha1.Model) *appsv1.Deployment {
 			Replicas: &replicas,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"app": model.ObjectMeta.Name,
+					appLabelKey: model.Name,
 				},
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
+					// Prometheus 按 pod 注解发现（role: pod 读不到 Deployment 上的注解）
+					Annotations: map[string]string{
+						"prometheus.io/scrape": "true",
+						"prometheus.io/port":   "8000",
+					},
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -314,7 +327,7 @@ func buildDeployment(model *maasv1alpha1.Model) *appsv1.Deployment {
 							VolumeSource: corev1.VolumeSource{
 								EmptyDir: &corev1.EmptyDirVolumeSource{
 									Medium:    corev1.StorageMediumMemory,
-									SizeLimit: ptr.To(resource.MustParse("8Gi")),
+									SizeLimit: new(resource.MustParse("8Gi")),
 								},
 							},
 						},
@@ -327,8 +340,8 @@ func buildDeployment(model *maasv1alpha1.Model) *appsv1.Deployment {
 
 func childLabels(model *maasv1alpha1.Model) map[string]string {
 	return map[string]string{
-		"app":                          model.ObjectMeta.Name,
+		appLabelKey:                    model.Name,
 		"app.kubernetes.io/managed-by": "maas-operator", // 资源区分，故障排查用
-		"maas.chr1sgong.io/model":      model.ObjectMeta.Name,
+		"maas.chr1sgong.io/model":      model.Name,
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/mini-maas/gateway/internal/auth"
+	"github.com/mini-maas/gateway/internal/metrics"
 	"github.com/mini-maas/gateway/internal/openai"
 )
 
@@ -24,14 +25,23 @@ func NewMiddleware(reg *Registry, defaultMaxTokens int) func(http.Handler) http.
 				next.ServeHTTP(w, r)
 				return
 			}
+			// QPS 限流. 当前demo重试时间固定为1s, 结合实际业务确定
+			if !pair.qps.Allow() {
+				metrics.RateLimitRejected.WithLabelValues(id.Tenant, "qps").Inc()
+				write429(w, "requests", pair.qps.RetryAfter(1))
+				return
+			}
 			ctx := r.Context()
 			// TPM 限流判断
 			if params, ok := openai.ParamsFrom(ctx); ok {
 				estimateTokens := estimateTokens(r, params, defaultMaxTokens)
 				if !pair.tpm.AllowN(estimateTokens) {
+					metrics.RateLimitRejected.WithLabelValues(id.Tenant, "tpm").Inc()
 					write429(w, "tokens", pair.tpm.RetryAfter(estimateTokens))
 					return
 				}
+				// ctx注入结算函数
+				// TODO: 这个设计不太好, 需要把结算单独剥离出来,这里注入一个标签好一些
 				ctx = withSettle(ctx, func(usage openai.Usage) {
 					refund := estimateTokens - float64(usage.TotalTokens)
 					pair.tpm.Refund(refund)

@@ -39,12 +39,15 @@ func loadConfig(path string) (*config, error) {
 		return nil, fmt.Errorf("read config: %w", err)
 	}
 
-	cfg := &config{}
+	cfg := &config{Listen: ":8080"}
+	cfg.Defaults.MaxCompletionTokens = 1024
+	cfg.Routing.Strategy = "round_robin"
+	cfg.Routing.AffinityBytes = 256
+	cfg.Routing.MaxAffinityInflight = 8
+
 	if err := json.Unmarshal(data, cfg); err != nil {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
-	cfg.Listen = ":8080"
-	cfg.Defaults.MaxCompletionTokens = 1024 // 设置默认的最大完成token数
 
 	return cfg, nil
 }
