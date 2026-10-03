@@ -1,0 +1,52 @@
+{
+  "run_id": "20261003-113849-steady-c8",
+  "argv": [
+    "--base-url",
+    "http://localhost:8080/v1",
+    "--api-key",
+    "sk-tenant-a-EXAMPLE",
+    "--model",
+    "qwen2.5-7b-awq",
+    "--mode",
+    "steady",
+    "--concurrency",
+    "8",
+    "--duration",
+    "60",
+    "--out",
+    "docs/experiments/d11-bashline.jsonl",
+    "--md",
+    "docs/baseline/d11-baseline-metrics.md",
+    "--run-json",
+    "docs/baseline/d11-baseline-run_json.json"
+  ],
+  "git_rev": "47d129a",
+  "start_unix": 1791027529.0113266,
+  "end_unix": 1791027589.4964163,
+  "wall_s": 60.33829401899129,
+  "model_cr_spec": {
+    "artifactURI": "hf://Qwen/Qwen2.5-7B-Instruct-AWQ",
+    "engine": "vllm",
+    "engineConfig": {
+      "enablePrefixCaching": true,
+      "maxModelLen": 8192,
+      "maxNumSeqs": 64
+    },
+    "image": "vllm/vllm-openai:v0.30.0",
+    "serving": {
+      "gpuMemoryUtilization": "0.45",
+      "replicas": 1
+    }
+  },
+  "config_snapshot": null,
+  "summary": {
+    "requests": 520,
+    "success_rate": 1.0,
+    "ttft_p50_ms": 173.00523850281024,
+    "ttft_p99_ms": 194.87234414351406,
+    "tpot_p50_ms": 6.494359529748452,
+    "tpot_p99_ms": 9.305553904630441,
+    "throughput_tokens_s": 1103.1137204351592,
+    "wall_s": 60.33829401899129
+  }
+}

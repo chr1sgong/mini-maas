@@ -284,7 +284,7 @@ func buildDeployment(model *maasv1alpha1.Model) *appsv1.Deployment {
 									},
 								},
 								InitialDelaySeconds: 5,
-								PeriodSeconds:       10,
+								PeriodSeconds:       2,
 								FailureThreshold:    90,
 							},
 							VolumeMounts: []corev1.VolumeMount{

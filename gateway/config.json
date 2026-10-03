@@ -12,7 +12,7 @@
       "key": "sk-tenant-a-EXAMPLE",
       "tenant": "tenant-a",
       "models": ["qwen2.5-7b-awq"],
-      "quota": { "qps": 64, "qps_burst": 64, "tpm": 300000 }
+      "quota": { "qps": 64, "qps_burst": 64, "tpm": 600000 }
     },
     {
       "key": "sk-tenant-b-EXAMPLE",
