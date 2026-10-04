@@ -20,6 +20,16 @@ if [ -f /etc/containerd/conf.d/99-nvidia.toml ]; then
   sudo cp /etc/containerd/conf.d/99-nvidia.toml "$TMPL_DIR/config.toml.tmpl"
 fi
 
+# nvidia-ctk 的合并配置会丢弃 k3s 生成的 registry(certs.d) 段，
+# 不补回的话 registries.yaml 里配的镜像加速全部失效
+if ! grep -q 'agent/etc/containerd/certs.d' "$TMPL_DIR/config.toml.tmpl"; then
+  sudo tee -a "$TMPL_DIR/config.toml.tmpl" >/dev/null <<'EOF'
+
+  [plugins."io.containerd.cri.v1.images".registry]
+    config_path = "/var/lib/rancher/k3s/agent/etc/containerd/certs.d"
+EOF
+fi
+
 sudo systemctl restart k3s
 
 kubectl wait --for=condition=Ready node --all --timeout=180s
