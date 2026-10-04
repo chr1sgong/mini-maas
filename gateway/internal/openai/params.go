@@ -84,7 +84,7 @@ func affinityKey(fields map[string]any, maxBytes int) uint64 {
 		return 0
 	}
 
-	msg, ok := fields["message"].([]any)
+	msg, ok := fields["messages"].([]any)
 	if !ok || len(msg) == 0 {
 		return 0
 	}
