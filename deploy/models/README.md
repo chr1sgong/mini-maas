@@ -1,1 +1,0 @@
-Model CR sample

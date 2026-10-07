@@ -1,0 +1,26 @@
+apiVersion: maas.chr1sgong.io/v1alpha1
+kind: Model
+metadata:
+  name: qwen2.5-7b-awq
+  namespace: mini-maas
+spec:
+  artifactURI: hf://Qwen/Qwen2.5-7B-Instruct-AWQ
+  engine: vllm
+  engineConfig:
+    maxModelLen: 8192 
+    maxNumSeqs: 64
+    enablePrefixCaching: true
+  image: vllm/vllm-openai:v0.30.0
+  serving: 
+    replicas: 1      # 默认只起一个. 其他实验需要的话,自己通过`kubectl -n mini-maas edit model <model-name>` 手动设置
+    gpuMemoryUtilization: "0.85"  # 默认一个副本把本地的GPU吃满. 其他实验需要的话,自己通过`kubectl -n mini-maas edit model <model-name>` 手动设置
+---
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: vllm-qwen2-5-7b-awq
+#   namespace: mini-maas
+# spec:
+#   selector: { app: vllm-qwen2-5-7b-awq }
+#   ports:
+#     - { name: http, port: 8000, targetPort: http }

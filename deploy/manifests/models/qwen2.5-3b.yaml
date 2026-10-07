@@ -12,5 +12,5 @@ spec:
     enablePrefixCaching: true
   image: vllm/vllm-openai:v0.30.0
   serving: 
-    replicas: 1
-    gpuMemoryUtilization: "0.45"
+    replicas: 1  # 其他实验需要的话,自己通过`kubectl -n mini-maas edit model <model-name>` 手动设置
+    gpuMemoryUtilization: "0.85"   # 默认一个副本把本地的GPU吃满. 其他实验需要的话,自己通过`kubectl -n mini-maas edit model <model-name>` 手动设置
