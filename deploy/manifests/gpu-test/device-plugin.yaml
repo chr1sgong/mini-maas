@@ -62,3 +62,13 @@ spec:
           name: nvidia-device-plugin-config
 
 ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nvidia-device-plugin-config
+  namespace: kube-system
+data:
+  config.yaml: |
+    version: v1
+    flags:
+      failOnInitError: false

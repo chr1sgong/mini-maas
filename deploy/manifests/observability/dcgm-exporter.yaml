@@ -22,7 +22,7 @@ spec:
           env:
             # dcgm 只读驱动计数器，不占 device-plugin 配额——
             # 绝不 request nvidia.com/gpu：time-slicing 超发的 2 份都已给 vLLM 双副本，
-            # 再 request 会把推理副本挤到 Pending（Q8）。
+            # 再 request 会把推理副本挤到 Pending
             - name: NVIDIA_VISIBLE_DEVICES
               value: "all"
             - name: NVIDIA_DRIVER_CAPABILITIES
@@ -43,5 +43,3 @@ spec:
               memory: 256Mi
             limits:
               memory: 512Mi
-      # 起不来的自查顺序：pod 日志 → kubectl exec 进去跑 nvidia-smi →
-      # 换 utkuozdemir/nvidia_gpu_exporter（Q8 备选）→ 放弃 GPU 行（不挡验收）

@@ -1,4 +1,4 @@
-# Prometheus（参考observability.md）
+# Prometheus
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -39,7 +39,7 @@ metadata:
   name: prometheus-data
   namespace: observability
 spec:
-  # k3s 自带 local-path provisioner；emptyDir 会在 pod 重启时丢曲线（Q3）
+  # k3s 自带 local-path provisioner；emptyDir 会在 pod 重启时丢数据
   storageClassName: local-path
   accessModes: ["ReadWriteOnce"]
   resources:
@@ -57,7 +57,7 @@ data:
       scrape_interval: 15s
 
     scrape_configs:
-      # vLLM pod：annotation 发现（operator 在 pod template 注入注解，Q4）。
+      # vLLM pod：annotation 发现（operator 在 pod template 注入注解）。
       # 5s 间隔: 给autoscaler反应留预算
       - job_name: vllm
         scrape_interval: 5s
@@ -69,7 +69,7 @@ data:
           - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
             action: keep
             regex: "true"
-          # instance = podIP:8000，与网关 endpoint 标签同口径（Q4）——
+          # instance = podIP:8000，与网关 endpoint 标签同口径
           # 路由分布与实例饱和度靠这个 key join，不要改成 pod 名。
           - source_labels: [__meta_kubernetes_pod_ip]
             target_label: __address__
@@ -79,13 +79,13 @@ data:
           - source_labels: [__meta_kubernetes_pod_label_maas_chr1sgong_io_model]
             target_label: model
 
-      # 网关在宿主机（D9 不进集群，Q10）：static 指 node InternalIP。
+      # 网关在宿主机：static 指 node InternalIP。
       # 查 IP：kubectl get node -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}'
       # 换网络环境后 IP 可能变，改这里再 delete prometheus pod 重载。
       - job_name: gateway
         static_configs:
           # - targets: ["HOST_INTERNAL_IP:8080"]
-          - targets: ["172.16.16.2:8080"]
+          - targets: ["172.16.16.2:8080"] # TODO: 不能写死IP, 使用域名比较好
 
       # dcgm-exporter（runbook Step 6）：同 vllm 的 annotation 模式，namespace 不同。
       - job_name: dcgm
@@ -111,7 +111,7 @@ metadata:
 spec:
   replicas: 1
   strategy:
-    type: Recreate # 单副本 + PVC，rolling 会新旧抢同一块盘
+    type: Recreate # 单副本 + PVC，rolling 会新旧抢同一块存储
   selector:
     matchLabels:
       app: prometheus
@@ -129,7 +129,7 @@ spec:
         fsGroup: 65534
       containers:
         - name: prometheus
-          image: prom/prometheus:v3.5.0 # pin tag，纪律同 vLLM 锁 v0.30.0
+          image: prom/prometheus:v3.5.0 # pin tag，锁定版本
           args:
             - --config.file=/etc/prometheus/prometheus.yml
             - --storage.tsdb.path=/prometheus

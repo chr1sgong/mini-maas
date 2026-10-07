@@ -79,7 +79,7 @@
         { "refId": "A", "expr": "sum by (instance) (rate(vllm:prompt_tokens_total[1m]))", "legendFormat": "{{instance}}" }
       ]
     },
-    { "id": 10, "type": "row", "title": "Routingx", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 24 }, "panels": [], "collapsed": false },
+    { "id": 10, "type": "row", "title": "Routing", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 24 }, "panels": [], "collapsed": false },
     {
       "id": 11, "type": "timeseries", "title": "Route decisions by endpoint",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -128,7 +128,7 @@
         { "refId": "A", "expr": "vllm:kv_cache_usage_perc", "legendFormat": "{{instance}}" }
       ]
     },
-    { "id": 16, "type": "row", "title": "GPU（共卡干扰与成本视角；连续批处理下 util 只读得出 0 或 ~100%）", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 40 }, "panels": [], "collapsed": false },
+    { "id": 16, "type": "row", "title": "GPU（多模型共卡干扰与成本视角；连续批处理下 util 只读得出 0 或 ~100%）", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 40 }, "panels": [], "collapsed": false },
     {
       "id": 17, "type": "timeseries", "title": "GPU utilization",
       "datasource": { "type": "prometheus", "uid": "prometheus" },

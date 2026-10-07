@@ -80,7 +80,7 @@ def main() -> None:
     p.add_argument("--queries", type=Path, default=Path(__file__).with_name("queries.yaml"))
     p.add_argument("--prom-url", default="http://localhost:9090")
     p.add_argument("--out-dir", type=Path, default=None, help="缺省 docs/experiments/<run_id>/")
-    p.add_argument("--pad", type=float, default=60, help="curve 窗口前后各加的秒数（看爬坡/回落，D11 看扩容延迟）")
+    p.add_argument("--pad", type=float, default=60, help="curve 窗口前后各加的秒数（看爬坡和回落）")
     args = p.parse_args()
 
     run_id = time.strftime("%Y%m%d-%H%M%S", time.gmtime())

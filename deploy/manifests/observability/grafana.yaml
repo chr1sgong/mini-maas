@@ -1,5 +1,5 @@
-# D9 参考实现：Grafana（设计文档 Q9）——datasource/dashboard 全部 provisioning，
-# 不手点 UI 建资源；面板 JSON 用 --from-file 建 ConfigMap（见 README 第 2 步）
+# datasource/dashboard 全部 provisioning，
+# 不需要手点 UI 建资源；面板 JSON 用 --from-file 建 ConfigMap
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -30,7 +30,7 @@ data:
         folder: ""
         type: file
         updateIntervalSeconds: 10
-        allowUiUpdates: true # UI 手改允许，但纪律是 export 回 JSON 再提交（Q9）
+        allowUiUpdates: true # UI 手改允许，最好是export回JSON再提交
         options:
           path: /var/lib/grafana/dashboards
 ---
@@ -55,7 +55,7 @@ spec:
         - name: grafana
           image: grafana/grafana:11.6.0 # pin tag
           env:
-            # 本地单节点免登录 admin，便利优先（Q9）；暴露给其他人前必须收回
+            # 本地单节点免登录 admin；暴露给其他人前必须收回
             - name: GF_AUTH_ANONYMOUS_ENABLED
               value: "true"
             - name: GF_AUTH_ANONYMOUS_ORG_ROLE
@@ -87,7 +87,7 @@ spec:
         # 几百行 JSON 嵌进 YAML literal block 就没法 diff 了，
         # 所以面板单独建 ConfigMap：kubectl create configmap grafana-dashboards
         #   --from-file=deploy/manifests/observability/dashboard/ -n observability
-        # 改完面板后重建：同命令加 --dry-run=client -o yaml | kubectl apply -f -
+        # 改完面板后重建：相同命令加 --dry-run=client -o yaml | kubectl apply -f -
         - name: dashboards
           configMap:
             name: grafana-dashboards

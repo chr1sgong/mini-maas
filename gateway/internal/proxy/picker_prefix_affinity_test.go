@@ -39,9 +39,9 @@ func TestPrefixAffinitySpreadsAcrossKeys(t *testing.T) {
 	}
 }
 
-// TestRendezvousMinimalDisruption 严格断言 HRW 的核心性质：
-// 摘掉一个端时，原属存活端的 key 一个都不许动，只有被摘端的 key 重新分配
-// （且占比 ~1/N）。这是 D11 扩容时保住缓存命中率的关键，hash%N 做不到。
+// TestRendezvousMinimalDisruption 断言 HRW 的核心性质：
+// 摘掉一个端时，原属存活端的 key 都不动，只有被摘端的 key 重新分配
+// （且占比 ~1/N）。这是扩容时保住缓存命中率的关键，hash%N不行。
 func TestRendezvousMinimalDisruption(t *testing.T) {
 	three := []string{"a", "b", "c"}
 	two := []string{"a", "b"} // 摘 c
@@ -81,7 +81,7 @@ func TestPrefixAffinityFallbackWhenSaturated(t *testing.T) {
 		hold = append(hold, d.ReleaseFn)
 	}
 
-	// 首选端已满：降级 least-inflight 扫全表，必须落到另一端
+	// 首选端已满：降级 least-inflight 扫全表，落到另一端
 	d := picker.Pick(testParams("m", key), endpoints)
 	if d.Reason != ReasonAffinityFallback {
 		t.Fatalf("reason = %q, want %q", d.Reason, ReasonAffinityFallback)
@@ -99,8 +99,8 @@ func TestPrefixAffinityFallbackWhenSaturated(t *testing.T) {
 	}
 }
 
-// key==0（无可亲和内容）退化为 least-inflight，reason 如实写——
-// D13 统计亲和命中率时这类请求不算命中也不算 fallback。
+// key==0（无可亲和内容）退化为 least-inflight
+// 统计亲和命中率时这类请求不算命中也不算 fallback。
 func TestPrefixAffinityNoKey(t *testing.T) {
 	tracker := NewInflightTracker()
 	picker := &PrefixAffinityPicker{tracker: tracker, maxInflight: 8}

@@ -57,7 +57,7 @@ func runScenario(t *testing.T, cfg Config, ticks []tick) {
 	}
 }
 
-// 单样本越限不动手（防抖第一刀）。
+// 单样本超限不动手。
 func TestSingleBreachDoesNotAct(t *testing.T) {
 	runScenario(t, testCfg, []tick{
 		{at: 0, sig: overload(), current: 1, actual: 1, wantAct: false, wantReasonIn: "busy"},
@@ -81,7 +81,7 @@ func TestBreachChainBrokenByGoodSample(t *testing.T) {
 	})
 }
 
-// 到顶不动手（max 即 GPU 供给账本上限）。
+// 到顶不动手（max 即 GPU 供给quota上限）。
 func TestAtMaxDoesNotAct(t *testing.T) {
 	runScenario(t, testCfg, []tick{
 		{at: 0, sig: overload(), current: 2, actual: 2, wantAct: false},
@@ -106,7 +106,7 @@ func TestIdleFullWindowScalesDown(t *testing.T) {
 	})
 }
 
-// 静默中断窗口重计：来一发流量，5 分钟计时从头开始。
+// 静默中断窗口重计：来一次请求，5 分钟计时从头开始。
 func TestIdleWindowResetByTraffic(t *testing.T) {
 	runScenario(t, testCfg, []tick{
 		{at: 0, sig: idle(), current: 2, actual: 2, wantAct: false},
@@ -123,7 +123,7 @@ func TestIdleToleratesStraggler(t *testing.T) {
 	})
 }
 
-// min=1 是硬底，永不缩 0（冷启动 60s 的服务缩 0 等于下线，设计 Q5）。
+// min=1 是硬底，不能缩到0
 func TestAtMinNeverScalesDown(t *testing.T) {
 	runScenario(t, testCfg, []tick{
 		{at: 0, sig: idle(), current: 1, actual: 1, wantAct: false},
@@ -131,7 +131,7 @@ func TestAtMinNeverScalesDown(t *testing.T) {
 	})
 }
 
-// 不变量 3：扩后冷却期内静默满窗也不许缩；冷却过了才缩。
+// 扩后冷却期内静默满窗也不许缩；冷却过了才缩。
 // （DownWindow=2m < UpCooldown=5m，才能单独露出冷却这一支。）
 func TestUpCooldownBlocksScaleDown(t *testing.T) {
 	cfg := testCfg
@@ -145,7 +145,7 @@ func TestUpCooldownBlocksScaleDown(t *testing.T) {
 	})
 }
 
-// 无数据保持现状且证据链作废：恢复后需重新积累连续样本（设计 Q6）。
+// 无数据保持现状
 func TestNoDataHoldsAndResetsChain(t *testing.T) {
 	runScenario(t, testCfg, []tick{
 		{at: 0, sig: overload(), current: 1, actual: 1, wantAct: false},
@@ -191,7 +191,7 @@ func TestActuator(t *testing.T) {
 		t.Fatalf("reason annotation = %q, %v, %v; want waiting_avg...", reason, found, err)
 	}
 
-	// dry-run 只读不写（Step 3 校准模式的安全性靠这一行）。
+	// dry-run 只读不写
 	dry := NewActuator(cli, "mini-maas", "qwen2.5-7b-awq", true)
 	if err := dry.PatchReplicas(ctx, 1, "should not land"); err != nil {
 		t.Fatalf("dry-run PatchReplicas: %v", err)

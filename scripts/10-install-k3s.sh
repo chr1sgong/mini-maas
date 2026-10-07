@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 安装 k3s 单节点
 # 用法：bash scripts/10-install-k3s.sh
-# K3S_CN_MIRROR=1 bash scripts/d1/10-install-k3s.sh   # 官方源慢时用国内镜像
+# K3S_CN_MIRROR=1 bash scripts/10-install-k3s.sh   # 官方源慢时用国内镜像
 set -euo pipefail
 
 if systemctl is-active --quiet k3s; then
@@ -16,6 +16,28 @@ if [ -f ~/.kube/config ]; then
   echo "已备份旧 kubeconfig（kind-kind）到 $bak"
   echo "如需临时切回 kind: export KUBECONFIG=$bak"
 fi
+
+# 镜像加速：registry.k8s.io / nvcr.io 等官方仓库国内云主机不可达，
+# k3s 安装前写好，containerd 首次启动即生效（agent 节点同样适用）
+sudo mkdir -p /etc/rancher/k3s
+sudo tee /etc/rancher/k3s/registries.yaml >/dev/null <<'EOF'
+mirrors:
+  docker.io:
+    endpoint:
+      - "https://docker.m.daocloud.io"
+  registry.k8s.io:
+    endpoint:
+      - "https://k8s.m.daocloud.io"
+  nvcr.io:
+    endpoint:
+      - "https://nvcr.m.daocloud.io"
+  quay.io:
+    endpoint:
+      - "https://quay.m.daocloud.io"
+  gcr.io:
+    endpoint:
+      - "https://gcr.m.daocloud.io"
+EOF
 
 # --disable traefik：网关自研，不需要内置 ingress
 INSTALL_EXEC="server --write-kubeconfig-mode 644 --disable traefik"

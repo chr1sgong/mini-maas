@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
-# D8 Step7-D 验收脚本: prefix 亲和调度
-# 对应 dev-journal/d8-runbook.md Step 7 D 的四项验收
+# 验收脚本: prefix 亲和调度
 #
 # 用法:
-#   ./scripts/d8-verify-prefix-affinity.sh                # 跑 D1-D3 (纯请求侧)
-#   INCLUDE_SCALING=1 ./scripts/d8-verify-prefix-affinity.sh  # 额外跑 D4 (改 replicas, 需要 kubectl)
+#   ./scripts/verify-prefix-affinity.sh                
+#   INCLUDE_SCALING=1 ./scripts/verify-prefix-affinity.sh  
 #
 # 前置: 网关已配置 strategy=prefix_affinity, 模型已有 2 个就绪 endpoint
 # 可用环境变量: BASE_URL API_KEY MODEL CAP(=max_affinity_inflight, 默认 8)

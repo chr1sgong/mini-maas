@@ -7,7 +7,6 @@ import (
 )
 
 // 一轮写入后 gather：指标族都在、inflight collector 读得到快照。
-// 标签形状（有界枚举）靠 code review 与 Q5 纪律保证，测试不重复。
 func TestMetricsSmoke(t *testing.T) {
 	RequestsTotal.WithLabelValues("m", "t", "200").Inc()
 	RouteDecisions.WithLabelValues("round_robin", "rr", "10.0.0.1:8000").Inc()
