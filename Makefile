@@ -23,7 +23,7 @@ IMG ?= vllm/vllm-openai:v0.30.0
 
 14-vllm:
 	@echo "=== Stage 5: deploy vllm ==="
-	kubectl apply -f deploy/manifests/vllm/vllm-qwen7b-awq.yaml
+	kubectl apply -f deploy/manifests/samples/vllm-qwen2.5-7b-awq.yaml
 
 15-smoke:
 	@echo "=== Stage 6: smoke test ==="

@@ -1,5 +1,4 @@
 # 查询清单 —— "指标字典 → Grafana 面板 → 落盘 CSV" 的单一事实源
-# 设计：docs/design-notes/20261003-d10-reconcile-export-design.md
 #
 # 条目字段：
 #   name   导出文件名（metrics/<name>.csv / summary.json 的键），也是指标字典里的引用名

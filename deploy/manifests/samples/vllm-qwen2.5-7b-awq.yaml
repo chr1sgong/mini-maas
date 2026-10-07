@@ -7,18 +7,18 @@ metadata:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: vllm-qwen7b-awq
+  name: vllm-qwen2.5-7b-awq-sample
   namespace: mini-maas
-  labels: { app: vllm-qwen7b-awq }
+  labels: { app: vllm-qwen2.5-7b-awq-sample }
 spec:
   strategy:
     type: Recreate
   replicas: 1
   selector:
-    matchLabels: { app: vllm-qwen7b-awq }
+    matchLabels: { app: vllm-qwen2.5-7b-awq-sample }
   template:
     metadata:
-      labels: { app: vllm-qwen7b-awq }
+      labels: { app: vllm-qwen2.5-7b-awq-sample }
     spec:
       containers:
         - name: vllm
@@ -29,7 +29,7 @@ spec:
             - --served-model-name=qwen2.5-7b
             - --max-model-len=8192
             - --max-num-seqs=64
-            - --gpu-memory-utilization=0.85 # 双实例共卡时改为 0.45
+            - --gpu-memory-utilization=0.85 
             - --enable-prefix-caching
           env:
             # 国内 HF 镜像加速；网络可直连 huggingface.co 则删除本项
@@ -60,9 +60,9 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: vllm-qwen7b-awq
+  name: vllm-qwen2-5-7b-awq-sample
   namespace: mini-maas
 spec:
-  selector: { app: vllm-qwen7b-awq }
+  selector: { app: vllm-qwen2.5-7b-awq-sample }
   ports:
     - { name: http, port: 8000, targetPort: http }
