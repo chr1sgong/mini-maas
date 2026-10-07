@@ -1,0 +1,134 @@
+# 查询清单 —— "指标字典 → Grafana 面板 → 落盘 CSV" 的单一事实源
+# 设计：docs/design-notes/20261003-d10-reconcile-export-design.md
+#
+# 条目字段：
+#   name   导出文件名（metrics/<name>.csv / summary.json 的键），也是指标字典里的引用名
+#   promql 原样打到 Prometheus；aggregate 条目里的 {window} 会被替换为 "<运行秒数>s"
+#   step   query_range 步长。纪律：对齐该 job 的 scrape 间隔（vllm=5s，gateway=15s），
+#          步长小于抓取间隔只会拿到重复点（staleness 沿用旧值最长 5 分钟）
+#   use    curve=query_range 落 CSV（窗口前后各加 --pad）；aggregate=整窗 instant 聚合进 summary.json
+
+# ---- curve：vLLM 引擎（5s job）----
+- name: engine_ttft_p50
+  promql: histogram_quantile(0.50, sum by (le) (rate(vllm:time_to_first_token_seconds_bucket[30s])))
+  step: 5s
+  use: curve
+- name: engine_ttft_p99
+  promql: histogram_quantile(0.99, sum by (le) (rate(vllm:time_to_first_token_seconds_bucket[1m])))
+  step: 5s
+  use: curve
+- name: engine_tpot_p50
+  promql: histogram_quantile(0.50, sum by (le) (rate(vllm:request_time_per_output_token_seconds_bucket[30s])))
+  step: 5s
+  use: curve
+- name: engine_tpot_p99
+  promql: histogram_quantile(0.99, sum by (le) (rate(vllm:request_time_per_output_token_seconds_bucket[1m])))
+  step: 5s
+  use: curve
+- name: throughput_gen
+  promql: sum(rate(vllm:generation_tokens_total[30s]))
+  step: 5s
+  use: curve
+- name: throughput_prompt
+  promql: sum(rate(vllm:prompt_tokens_total[30s]))
+  step: 5s
+  use: curve
+- name: queue_running
+  promql: sum by (model_name) (vllm:num_requests_running)
+  step: 5s
+  use: curve
+- name: queue_waiting
+  promql: sum by (model_name) (vllm:num_requests_waiting)
+  step: 5s
+  use: curve
+- name: kv_cache_perc
+  promql: max by (instance) (vllm:kv_cache_usage_perc)
+  step: 5s
+  use: curve
+# 副本数曲线的取巧做法：被抓到的实例数随 reconcile 自动增减，扩缩容用有用。
+# 注意前提是单模型（多模型时 series 数 = 副本数 × 模型数，需按 model_name 分开 count）
+- name: replicas_actual
+  promql: count(vllm:num_requests_running)
+  step: 5s
+  use: curve
+
+# ---- curve：网关（15s job）----
+- name: gateway_ttft_p50
+  promql: histogram_quantile(0.50, sum by (le) (rate(maas_gateway_ttft_seconds_bucket[1m])))
+  step: 15s
+  use: curve
+- name: gateway_ttft_p99
+  promql: histogram_quantile(0.99, sum by (le) (rate(maas_gateway_ttft_seconds_bucket[1m])))
+  step: 15s
+  use: curve
+- name: gateway_tpot_p50
+  promql: histogram_quantile(0.50, sum by (le) (rate(maas_gateway_tpot_seconds_bucket[1m])))
+  step: 15s
+  use: curve
+- name: gateway_tpot_p99
+  promql: histogram_quantile(0.99, sum by (le) (rate(maas_gateway_tpot_seconds_bucket[1m])))
+  step: 15s
+  use: curve
+- name: gateway_inflight
+  promql: sum by (endpoint) (maas_gateway_inflight_requests)
+  step: 15s
+  use: curve
+- name: route_decisions
+  promql: sum by (endpoint, reason) (rate(maas_gateway_route_decisions_total[1m]))
+  step: 15s
+  use: curve
+- name: gateway_rps
+  promql: sum by (code) (rate(maas_gateway_requests_total[1m]))
+  step: 15s
+  use: curve
+
+# ---- aggregate：整窗聚合（{window} = 运行时长，不 pad）----
+- name: reqs_engine
+  promql: sum(increase(vllm:request_success_total[{window}]))
+  use: aggregate
+- name: reqs_gateway_200
+  promql: sum(increase(maas_gateway_requests_total{code="200"}[{window}]))
+  use: aggregate
+# 均值用 increase 的 sum/count 比值，比 histogram 分位更稳（
+- name: engine_ttft_mean
+  promql: sum(increase(vllm:time_to_first_token_seconds_sum[{window}])) / sum(increase(vllm:time_to_first_token_seconds_count[{window}]))
+  use: aggregate
+- name: gateway_ttft_mean
+  promql: sum(increase(maas_gateway_ttft_seconds_sum[{window}])) / sum(increase(maas_gateway_ttft_seconds_count[{window}]))
+  use: aggregate
+- name: engine_tpot_mean
+  promql: sum(increase(vllm:request_time_per_output_token_seconds_sum[{window}])) / sum(increase(vllm:request_time_per_output_token_seconds_count[{window}]))
+  use: aggregate
+- name: gateway_tpot_mean
+  promql: sum(increase(maas_gateway_tpot_seconds_sum[{window}])) / sum(increase(maas_gateway_tpot_seconds_count[{window}]))
+  use: aggregate
+# 引擎内部拆解：e2e ≈ queue + prefill + decode（V1 实测指标，对账第一份产出）
+- name: engine_queue_mean
+  promql: sum(increase(vllm:request_queue_time_seconds_sum[{window}])) / sum(increase(vllm:request_queue_time_seconds_count[{window}]))
+  use: aggregate
+- name: engine_prefill_mean
+  promql: sum(increase(vllm:request_prefill_time_seconds_sum[{window}])) / sum(increase(vllm:request_prefill_time_seconds_count[{window}]))
+  use: aggregate
+- name: engine_decode_mean
+  promql: sum(increase(vllm:request_decode_time_seconds_sum[{window}])) / sum(increase(vllm:request_decode_time_seconds_count[{window}]))
+  use: aggregate
+- name: engine_e2e_mean
+  promql: sum(increase(vllm:e2e_request_latency_seconds_sum[{window}])) / sum(increase(vllm:e2e_request_latency_seconds_count[{window}]))
+  use: aggregate
+# 整窗分位：histogram_quantile 必须先 increase 聚合桶再分位
+- name: engine_ttft_p99_win
+  promql: histogram_quantile(0.99, sum by (le) (increase(vllm:time_to_first_token_seconds_bucket[{window}])))
+  use: aggregate
+- name: gateway_ttft_p99_win
+  promql: histogram_quantile(0.99, sum by (le) (increase(maas_gateway_ttft_seconds_bucket[{window}])))
+  use: aggregate
+- name: gen_tokens
+  promql: sum(increase(vllm:generation_tokens_total[{window}]))
+  use: aggregate
+# prefix 实验预置：token 维度命中率（口径见文件头实测注释）
+- name: prefix_hit_rate
+  promql: sum(increase(vllm:prefix_cache_hits_total[{window}])) / sum(increase(vllm:prefix_cache_queries_total[{window}]))
+  use: aggregate
+- name: ratelimit_rejected
+  promql: sum by (dimension, tenant) (increase(maas_gateway_ratelimit_rejected_total[{window}]))
+  use: aggregate

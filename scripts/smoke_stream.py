@@ -9,7 +9,7 @@ import time
 
 from openai import OpenAI
 
-BASE_URL = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8000/v1"
+BASE_URL = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8080/v1"
 
 client = OpenAI(base_url=BASE_URL, api_key="EMPTY")
 

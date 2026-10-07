@@ -1,0 +1,45 @@
+# 消费卡（4090）能拿到 GPU_UTIL/FB_USED/功耗/温度，拿不到 PROF_* 细粒度，无所谓。
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: dcgm-exporter
+  namespace: observability
+spec:
+  selector:
+    matchLabels:
+      app: dcgm-exporter
+  template:
+    metadata:
+      labels:
+        app: dcgm-exporter
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9400"
+    spec:
+      containers:
+        - name: dcgm-exporter
+          image: nvcr.io/nvidia/k8s/dcgm-exporter:3.3.8-3.6.0-ubuntu22.04 # tag 以 nvcr.io 实际列表为准
+          env:
+            # dcgm 只读驱动计数器，不占 device-plugin 配额——
+            # 绝不 request nvidia.com/gpu：time-slicing 超发的 2 份都已给 vLLM 双副本，
+            # 再 request 会把推理副本挤到 Pending
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: "all"
+            - name: NVIDIA_DRIVER_CAPABILITIES
+              value: "utility"
+          # 默认镜像以非 root 运行，DCGM host engine 起不来直接 fatal：
+          # "Host engine is running as non-root"。必须 root + SYS_ADMIN
+          # （SYS_ADMIN 同时解锁 PROF_* profiling 指标）
+          securityContext:
+            runAsUser: 0
+            capabilities:
+              add: ["SYS_ADMIN"]
+          ports:
+            - name: metrics
+              containerPort: 9400
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi

@@ -1,0 +1,93 @@
+{
+  "run_id": "20261003-114052",
+  "start_unix": 1791027529.011,
+  "end_unix": 1791027589.496,
+  "window_s": 60,
+  "aggregates": {
+    "reqs_engine": [
+      {
+        "metric": {},
+        "value": 520.5112727272727
+      }
+    ],
+    "reqs_gateway_200": [
+      {
+        "metric": {},
+        "value": 512.0
+      }
+    ],
+    "engine_ttft_mean": [
+      {
+        "metric": {},
+        "value": 0.14212225809157775
+      }
+    ],
+    "gateway_ttft_mean": [
+      {
+        "metric": {},
+        "value": 0.14682627988800806
+      }
+    ],
+    "engine_tpot_mean": [
+      {
+        "metric": {},
+        "value": 0.006064108488726071
+      }
+    ],
+    "gateway_tpot_mean": [
+      {
+        "metric": {},
+        "value": 0.0060467758791215385
+      }
+    ],
+    "engine_queue_mean": [
+      {
+        "metric": {},
+        "value": 1.9984494476584123e-05
+      }
+    ],
+    "engine_prefill_mean": [
+      {
+        "metric": {},
+        "value": 0.12801629689857438
+      }
+    ],
+    "engine_decode_mean": [
+      {
+        "metric": {},
+        "value": 0.7688543977886971
+      }
+    ],
+    "engine_e2e_mean": [
+      {
+        "metric": {},
+        "value": 0.9098321253229964
+      }
+    ],
+    "engine_ttft_p99_win": [
+      {
+        "metric": {},
+        "value": 0.24825675675675674
+      }
+    ],
+    "gateway_ttft_p99_win": [
+      {
+        "metric": {},
+        "value": 0.19883636363636364
+      }
+    ],
+    "gen_tokens": [
+      {
+        "metric": {},
+        "value": 66127.63636363635
+      }
+    ],
+    "prefix_hit_rate": [
+      {
+        "metric": {},
+        "value": 0.06475493461269298
+      }
+    ],
+    "ratelimit_rejected": []
+  }
+}

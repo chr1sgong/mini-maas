@@ -1,0 +1,36 @@
+{
+  "listen": ":8080",
+  "metering": true,
+  "defaults": { "max_tokens": 1024 },
+  "routing": {
+    "strategy": "round_robin",
+    "affinity_bytes": 1024,
+    "max_affinity_inflight": 1
+  },
+  "keys": [
+    {
+      "key": "sk-tenant-a-EXAMPLE",
+      "tenant": "tenant-a",
+      "models": ["qwen2-5-7b"],
+      "quota": { "qps": 5, "qps_burst": 5, "tpm": 20000 }
+    },
+    {
+      "key": "sk-tenant-b-EXAMPLE",
+      "tenant": "tenant-b",
+      "models": ["qwen2-5-3b"],
+      "quota": { "qps": 5, "qps_burst": 5, "tpm": 20000 }
+    },
+    {
+      "key": "sk-tenant-c-EXAMPLE",
+      "tenant": "tenant-c",
+      "models": ["qwen2-5-7b"],
+      "quota": { "qps": 5, "qps_burst": 5, "tpm": 600 }
+    },
+    {
+      "key": "sk-tenant-d-EXAMPLE",
+      "tenant": "tenant-d",
+      "models": ["qwen2-5-7b"],
+      "quota": { "qps": 5, "qps_burst": 5, "tpm": 600 }
+    }
+  ]
+}

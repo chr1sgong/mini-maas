@@ -18,3 +18,6 @@ docs/baseline/**.png
 .idea
 .vscode/
 *.swp
+
+dev-journal/
+docs/experiments/**/bench.jsonl

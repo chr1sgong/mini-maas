@@ -1,0 +1,54 @@
+{
+  "run_id": "20261004-multinode",
+  "argv": [
+    "--base-url",
+    "http://localhost:8080/v1",
+    "--api-key",
+    "sk-tenant-a-EXAMPLE",
+    "--model",
+    "qwen2.5-7b-awq",
+    "--mode",
+    "steady",
+    "--concurrency",
+    "16",
+    "--duration",
+    "300",
+    "--run-id",
+    "20261004-multinode",
+    "--config-snapshot",
+    "gateway/config.json",
+    "--out",
+    "docs/experiments/20261004-multinode/bench.jsonl",
+    "--md",
+    "docs/experiments/20261004-multinode/bench.md"
+  ],
+  "git_rev": "f4af853",
+  "start_unix": 1791124386.956007,
+  "end_unix": 1791124690.3883579,
+  "wall_s": 303.20559993200004,
+  "model_cr_spec": {
+    "artifactURI": "hf://Qwen/Qwen2.5-7B-Instruct-AWQ",
+    "engine": "vllm",
+    "engineConfig": {
+      "enablePrefixCaching": true,
+      "maxModelLen": 8192,
+      "maxNumSeqs": 64
+    },
+    "image": "vllm/vllm-openai:v0.30.0",
+    "serving": {
+      "gpuMemoryUtilization": "0.45",
+      "replicas": 4
+    }
+  },
+  "config_snapshot": "{\n  \"listen\": \":8080\",\n  \"metering\": true,\n  \"defaults\": { \"max_tokens\": 1024 },\n  \"routing\": {\n    \"strategy\": \"prefix_affinity\",\n    \"affinity_bytes\": 256,\n    \"max_affinity_inflight\": 8\n  },\n  \"keys\": [\n    {\n      \"key\": \"sk-tenant-a-EXAMPLE\",\n      \"tenant\": \"tenant-a\",\n      \"models\": [\"qwen2.5-7b-awq\"],\n      \"quota\": { \"qps\": 64, \"qps_burst\": 64, \"tpm\": 600000 }\n    },\n    {\n      \"key\": \"sk-tenant-b-EXAMPLE\",\n      \"tenant\": \"tenant-b\",\n      \"models\": [\"qwen2.5-3b\"],\n      \"quota\": { \"qps\": 5, \"qps_burst\": 5, \"tpm\": 20000 }\n    }\n  ]\n}\n",
+  "summary": {
+    "requests": 1330,
+    "success_rate": 1.0,
+    "ttft_p50_ms": 181.38238550000096,
+    "ttft_p99_ms": 411.2569567403807,
+    "tpot_p50_ms": 29.81175779838549,
+    "tpot_p99_ms": 43.52373207994917,
+    "throughput_tokens_s": 561.4672025786455,
+    "wall_s": 303.20559993200004
+  }
+}
