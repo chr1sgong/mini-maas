@@ -1,42 +1,44 @@
 # mini-maas
 
-在 Kubernetes（k3s）上自建的迷你 **Model-as-a-Service** 平台：以 OpenAI 兼容协议对外提供多模型推理服务，覆盖「模型接入 → 实例调度 → 流式推理 → 多租户计量限流 → 指标观测 → 弹性伸缩 → 压测实验归档」的完整链路。适合对maas产品系统架构进行入门学习的用户.
+在 Kubernetes（k3s）上自建的迷你 **Model-as-a-Service** 平台：以 OpenAI 兼容协议对外提供多模型推理服务，覆盖「模型接入 → 实例调度 → 流式推理 → 多租户计量限流 → 指标观测 → 弹性伸缩 → 压测实验归档」的完整链路。适合对maas产品系统架构进行入门学习的用户。
 
 ## 产品功能
+
+![product-design](docs/source/assets/images/product-design.png)
 
 平台由四个核心组件构成：
 
 - **Operator**（`operator/`，kubebuilder v4 脚手架）
-  自定义 `Model` CRD（`maas.chr1sgong.io/v1alpha1`）。在 CR 中声明模型地址（`hf://` artifactURI）、推理引擎（vLLM）及引擎参数（maxModelLen / maxNumSeqs / enablePrefixCaching）、副本数与显存占用比例；reconcile 后自动生成并管理 vLLM 的 Deployment/Service，回填 `status.phase`（Pending/Creating/Ready/Failed）和实例级 `status.endpoints`。
+  自定义 `Model` CRD（`maas.chr1sgong.io/v1alpha1`）。在 CR 中声明模型地址（`hf://` artifactURI），推理引擎（vLLM）及引擎参数（maxModelLen / maxNumSeqs / enablePrefixCaching）、副本数与显存占用比例；reconcile 后自动生成并管理 vLLM 的 Deployment/Service，回填 `status.phase`（Pending/Creating/Ready/Failed）和实例级 `status.endpoints` .
 
 - **Gateway**（`gateway/`，Go，监听 `:8080`）
   OpenAI 兼容的多租户推理网关：
   - 按请求体 `model` 字段路由，watch Model CR status 实时维护「模型 → endpoints」路由表；
   - SSE 流式透传，客户端断连沿 context 传播到上游；
   - API key 鉴权（key → 租户/可用模型/配额映射）；
-  - QPS + TPM 双维令牌桶限流（TPM 采用「预检扣估算、旁路解析 usage 结算退款」模型，超限返回 `Retry-After`）；
+  - QPS + TPM 维度令牌桶限流（TPM 采用「预检扣估算、旁路解析 usage 结算退款」模型，超限返回 `Retry-After`）；
   - 三种实例调度策略：`round_robin` / `least_inflight` / `prefix_affinity`（rendezvous 哈希亲和 + 过载降级，配合 vLLM prefix cache 提命中率），路由决策通过 `X-MaaS-Endpoint` / `X-MaaS-Route-Reason` 响应头暴露；
   - 暴露 `/metrics`（`maas_gateway_*` 系列 Prometheus 指标）。
 
 - **Autoscaler**（`operator/cmd/autoscaler`）
   从 Prometheus 读取 vLLM 队列指标（`num_requests_waiting/running`），规则式步进决策（±1 副本、防抖、冷却期），merge patch Model CR 的 `spec.serving.replicas`，闭环「指标 → 决策 → 改声明 → 容量变化」。
 
-- **可观测性与实验管线**
-  Prometheus + Grafana + dcgm-exporter（GPU 指标）plain YAML 部署；`bench/bench.py` 压测器（steady 闭环 / burst 开环两种流量模型，TTFT/TPOT/吞吐精确口径）；`scripts/export_run.py` + `render_charts.py` 按 PromQL 清单（`scripts/queries.yaml`）从 Prometheus 导出实验数据并渲染报告图，实验按规范归档于 `docs/experiments/`。
+- **可观测性与实验pipeline**
+  Prometheus + Grafana + dcgm-exporter（GPU 指标）plain YAML 部署；`bench/bench.py` 压测器（steady(闭环) / burst(开环) 两种流量模型，TTFT/TPOT/吞吐精确口径）；`scripts/export_run.py` + `render_charts.py` 按 PromQL 清单（`scripts/queries.yaml`）从 Prometheus 导出实验数据并渲染报告图，实验按规范归档于 `docs/experiments/`。
 
 ## 已完成能力
 
 - ✅ **GPU 推理底座**：k3s + NVIDIA GPU runtime（nvidia-container-toolkit 注入 containerd + device-plugin），vLLM v0.30.0 部署 Qwen2.5-7B-Instruct-AWQ，OpenAI SDK 流式冒烟通过（预热后 TTFT ≈15ms）。
-- ✅ **压测器与基线**：`bench.py` 指标口径定稿（TTFT/TPOT/吞吐，steady/burst 双流量模型），完成单实例基线矩阵（成功率 100%）：c=1 吞吐 ≈145 tok/s；c=16 ≈1859 tok/s、TTFT P50 ≈49ms；c=64 吞吐饱和 ≈3021 tok/s（详见 `docs/baseline/`）。
-- ✅ **Model CRD 与 Operator**：CRD 契约定稿（校验/默认值/printer columns/status subresource）；reconcile 落地——apply CR 自动建 Deployment/Service、status/endpoints 回填，幂等、级联删除、热更新、自愈均验收通过。
-- ✅ **单卡多模型**：单卡上 7B-AWQ + 3B-FP16 双实例（gpuMemoryUtilization 0.45+0.45），device-plugin time-slicing 供给 2 份 GPU。
-- ✅ **网关 v1**：SSE 流式透传、路由表 watch Model CR、`/v1/models` 聚合，TTFT 网关税 < 5ms。
-- ✅ **多租户**：API key 鉴权 + QPS/TPM 双维限流（含退款结算、include_usage 旁路注入、Retry-After）。
-- ✅ **调度策略**：round_robin / least_inflight / prefix_affinity 三种 picker + 路由决策响应头，2 副本下 RR/least-inflight 分布验证通过。
-- ✅ **可观测性**：Prometheus 抓取 vLLM 与网关指标，Grafana 六行面板（Traffic/Latency/Throughput/Routing/Saturation/GPU），压测进行中实时可见。
-- ✅ **压测-看板闭环**：bench / 网关 / 引擎三视角计数精确对账；单次压测数据 10 分钟内可导出成报告。
-- ✅ **弹性伸缩**：自研 autoscaler 接管副本数——突发流量扩容 t1−T0 ≤ 90s，静默 5 分钟自动缩容（数据见 `docs/experiments/autoscaler-baseline`）。
-- ✅ **多节点复制**：2 台双卡 4090 云主机组网（k3s server+agent），整套 manifests 原样 apply 成功；7B 扩 4 副本跨节点调度 + 网关跨节点路由分布验证通过（`docs/experiments/20261004-multinode`）。
+- ✅ **压测与baseline**：`bench.py` 指标口径定稿（TTFT/TPOT/吞吐，steady/burst 双流量模型），完成单实例基线矩阵（成功率 100%）：c=1 吞吐 ≈145 tok/s；c=16 ≈1859 tok/s、TTFT P50 ≈49ms；c=64 吞吐饱和 ≈3021 tok/s（详见 `docs/baseline/`）。
+- ✅ **Model CRD 与 Operator**：CRD MVP版本（校验/默认值/printer columns/status subresource）；reconcile 落地——apply CR 自动建 Deployment/Service、status/endpoints 回填，幂等、级联删除、热更新、自愈均验收通过。
+- ✅ **单卡多模型**：单卡上 7B-AWQ + 3B-FP16 双实例（gpuMemoryUtilization 0.45+0.45）部署，device-plugin time-slicing 供给2份GPU。
+- ✅ **网关 v1**：SSE 流式透传、路由表 watch Model CR、`/v1/models` 聚合，TTFT 网关开销 < 10ms.
+- ✅ **多租户**：API key 鉴权 + QPS/TPM 维度令牌桶限流（含退款结算、include_usage 旁路注入、Retry-After）。
+- ✅ **调度策略**：round_robin / least_inflight / prefix_affinity 三种algorhtims + 路由决策响应头，2副本下 round_robin/least_inflight 分布验证通过。
+- ✅ **可观测性**：Prometheus 抓取vLLM与网关指标，Grafana基础面板（Traffic/Latency/Throughput/Routing/Saturation/GPU），压测进行中实时可见。
+- ✅ **压测-看板闭环**：bench/网关/引擎三视角计数数据；单次压测数据10分钟内可导出成报告。
+- ✅ **弹性伸缩**：基础autoscaler接管副本数——突发流量扩容 t1−T0 ≤ 90s，静默5分钟自动缩容（数据见 `docs/experiments/autoscaler-baseline`）。
+- ✅ **多节点复制**：2台双卡4090云主机组网（k3s server+agent），整套 manifests 原样 apply 成功；7B 扩4副本跨节点调度 + 网关跨节点路由分布验证通过（`docs/experiments/20261004-multinode`）。
 
 ## 仓库结构
 
@@ -158,3 +160,25 @@ python3 scripts/render_charts.py ... # 渲染报告图
 - 基线数据：`docs/baseline/`
 - 设计笔记：`docs/designs/`
 - 实验归档：`docs/experiments/`
+
+## TODO
+
+### P0 收尾工作
+
+- [ ] prefix_affinity实验数据。
+- [ ] 详细设计文档。
+- [ ] 服务测试、部署与打包CI/CD.
+
+### P1 核心功能扩展
+
+- [ ] routing支持更多的路由算法，与之对应的指标收集。上游实例故障时的重试/failover/熔断能力。
+- [ ] autoscaler支持更多指标和更多的扩容方式。
+- [ ] 网关安全与租户管理。请求支持https(TLS)，租户目前只有一个配置文件, 且routing和autoscaler都是使用kubeconfig本地admin权限的。
+- [ ] 高可用——gateway/autoscaler/operator目前都是单实例运行，没有多副本与leader election，gateway的stateless横向扩展也需要验证。
+
+### P2 平台长期演化
+
+- [ ] 多引擎支持，目前只支持vLLM, 未来支持SGLang, TensorRT-LLM等引擎。
+- [ ] 模型生命周期管理，CRD版本演进、冷启动优化，包括预热、镜像内嵌权重、缓存复用等。
+- [ ] 模块化，网关职责拆分，业务层和基础能力层拆分。
+- [ ] 成本与性能。token用量数据持久化，联动硬件与运维费用模型精细化管理GPU资源。
