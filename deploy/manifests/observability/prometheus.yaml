@@ -85,7 +85,7 @@ data:
       - job_name: gateway
         static_configs:
           # - targets: ["HOST_INTERNAL_IP:8080"]
-          - targets: ["172.16.16.2:8080"] # TODO: 不能写死IP, 使用域名比较好
+          - targets: ["192.168.2.199:8080"] # TODO: 不能写死IP, 使用域名比较好
 
       # dcgm-exporter（runbook Step 6）：同 vllm 的 annotation 模式，namespace 不同。
       - job_name: dcgm
