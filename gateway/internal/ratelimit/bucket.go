@@ -11,7 +11,7 @@ type Bucket struct {
 	mu       sync.Mutex
 	capacity float64          // 桶的容量, 即最多可以存放的令牌数
 	tokens   float64          // 当前桶中的令牌数
-	perSec   float64          // 每分钟回填的令牌数
+	perSec   float64          // 每秒钟回填的令牌数
 	last     time.Time        // 上次回填令牌的时间
 	now      func() time.Time // 可替换时钟计算函数, 主要用于测试
 }

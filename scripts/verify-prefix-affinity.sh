@@ -20,7 +20,7 @@ trap 'rm -rf "$TMPDIR"' EXIT
 PASS=0; FAIL=0
 ok()   { PASS=$((PASS+1)); echo "  [PASS] $1"; }
 bad()  { FAIL=$((FAIL+1)); echo "  [FAIL] $1"; }
-head() { echo; echo "== $1 =="; }
+section() { echo; echo "== $1 =="; }
 
 # 发一条请求, 输出 "endpoint<TAB>reason" 到 stdout
 req() { # req <json-body>
@@ -47,7 +47,7 @@ body() {
 SHARED_SYS=$(printf '你是一个严谨的写作助手，回答前先列提纲，再分段展开，每段至少三句，避免口语化表达。%.0s' $(seq 1 10))
 [ ${#SHARED_SYS} -ge 300 ] || { echo "shared prompt 不足 300 字"; exit 1; }
 
-head "D1: 同 system prompt x 10 顺序请求 -> 全部同端, Reason=affinity"
+section "D1: 同 system prompt x 10 顺序请求 -> 全部同端, Reason=affinity"
 D1="$TMPDIR/d1"; : > "$D1"
 for i in $(seq 10); do req "$(body "$SHARED_SYS" "第${i}次: 写一段关于秋天的短文")" >> "$D1"; done
 sort "$D1" | uniq -c | sed 's/^/    /'
@@ -56,7 +56,7 @@ aff_n=$(awk -F'\t' '$2=="affinity"' "$D1" | wc -l)
 [ "$ep_n" -eq 1 ] && ok "10 条全部落在同一端" || bad "落在 ${ep_n} 个端, 期望 1"
 [ "$aff_n" -eq 10 ] && ok "Reason 全部为 affinity (${aff_n}/10)" || bad "affinity 仅 ${aff_n}/10"
 
-head "D2: 20 个不同前缀各 1 条 -> 分散到两端; 每个前缀重复 3 次稳定同端"
+section "D2: 20 个不同前缀各 1 条 -> 分散到两端; 每个前缀重复 3 次稳定同端"
 D2="$TMPDIR/d2"; : > "$D2"
 declare -A FIRST_EP
 for p in $(seq -w 20); do
@@ -79,7 +79,7 @@ for p in $(seq -w 20); do
 done
 [ "$STABLE" -eq 60 ] && ok "60 次重复全部稳定同端" || bad "稳定 ${STABLE}/60"
 
-head "D3: 并发 $((CAP+4)) 条同前缀长生成 (cap=$CAP) -> 出现 affinity-fallback 且不堆积单端"
+section "D3: 并发 $((CAP+4)) 条同前缀长生成 (cap=$CAP) -> 出现 affinity-fallback 且不堆积单端"
 D3="$TMPDIR/d3"; : > "$D3"
 pids=()
 for i in $(seq $((CAP+4))); do
@@ -94,7 +94,7 @@ maxshare=$(cut -f1 "$D3" | sort | uniq -c | awk '{print $1}' | sort -n | tail -1
 [ "$maxshare" -lt $((CAP+4)) ] && ok "无单端打满 (最多一端 ${maxshare}/$((CAP+4)))" || bad "全部 ${maxshare} 条堆积在单端"
 
 if [ "${INCLUDE_SCALING:-0}" = "1" ]; then
-  head "D4: replicas 2->3 -> 部分前缀迁移而非全部"
+  section "D4: replicas 2->3 -> 部分前缀迁移而非全部"
   command -v kubectl >/dev/null || { echo "  [SKIP] 需要 kubectl"; }
   kubectl -n mini-maas patch model "${MODEL}" --type merge -p '{"spec":{"serving":{"replicas":3}}}'
   for _ in $(seq 1 60); do
